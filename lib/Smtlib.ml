@@ -59,12 +59,8 @@ let read (solver : solver) : sexp =
   Smtlib_parser.sexp Smtlib_lexer.token solver.stdout_lexbuf
 
 let command (solver : solver) (sexp : sexp) =
-  (* Printf.printf "Writing\n%s\n%!" (sexp_to_string sexp); *)
   write solver sexp;
-  (* Printf.printf "written\n%!"; *)
-  let r = read solver in
-  (* Printf.printf "Read\n%!"; *)
-  r
+  read solver
 
 let silent_command (solver : solver) (sexp : sexp) = write solver sexp
 
@@ -126,6 +122,10 @@ let make_solver (z3_path : string) : solver =
   _names := (solver, ref StringMap.empty) :: !_names;
   solver
 
+let set_option (solver : solver) (optname : string) (value : bool) : unit =
+  silent_command solver (SList [SSymbol ("set-option"); 
+                                SSymbol (optname); 
+                                SSymbol (if value then "true" else "false")])
 
 let fresh_name (solver : solver) (base : string) : sexp =
   let names =
@@ -272,6 +272,9 @@ let declare_sort (solver : solver) (id : identifier) (arity : int) : unit =
 let assert_ (solver : solver) (term : term) : unit =
   expect_success solver (SList [SSymbol "assert"; term_to_sexp term])
 
+let assert_named  (solver : solver) (name : string) (term : term) : unit =
+  expect_success solver (SList [SSymbol "assert"; SList [SSymbol "!"; (term_to_sexp term)]; SSymbol ":named"; SSymbol name])
+
 let assert_soft (solver : solver) ?weight:(weight = 1) ?id:(id = "") (term : term) : unit =
   let id_suffix = match id with
     | "" -> []
@@ -342,6 +345,13 @@ let get_model (solver : solver) : (identifier * term) list =
   | SList (SSymbol "model" :: alist)
   | SList (alist) -> read_model alist
   | sexp -> failwith ("expected model, got " ^ (sexp_to_string sexp))
+
+let get_unsat_core (solver : solver) : string list =
+  let sexp = command solver (SList [SSymbol "get-unsat-core"]) in
+  match sexp with
+  | SList lst -> List.map sexp_to_string lst
+  | _ -> failwith "Unsat core was not list"
+  
 
 let get_one_value (solver : solver) (e : term) : term =
   let res = command solver
