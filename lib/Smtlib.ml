@@ -62,7 +62,8 @@ let command (solver : solver) (sexp : sexp) =
   write solver sexp;
   read solver
 
-let silent_command (solver : solver) (sexp : sexp) = write solver sexp
+let silent_command (solver : solver) (sexp : sexp) =
+  write solver sexp
 
 (* keep track of all solvers we spawn, so we can close our read/write
    FDs when the solvers exit *)
@@ -239,7 +240,7 @@ let rec term_to_sexp (term : term) : sexp = match term with
            SList [SList [SSymbol x; term_to_sexp term1]];
            term_to_sexp term2]
 
-let sexp_to_term (sexp : sexp) : term = match sexp with
+let rec sexp_to_term (sexp : sexp) : term = match sexp with
   | SString s -> String s
   | SInt n -> Int n
   | SBitVec (n, w) -> BitVec (n, w)
@@ -247,7 +248,8 @@ let sexp_to_term (sexp : sexp) : term = match sexp with
   | SBigBitVec (n,w) -> BigBitVec (n, w)
   | SSymbol x -> Const (Id x)
   | SList (SSymbol "-" :: SInt x :: []) -> Int (-x)
-  | _ -> failwith "unparsable term"
+  | SList (SSymbol f :: tail) -> App (Id f, List.map sexp_to_term tail)
+  | _ -> failwith ("unparsable term: " ^ (sexp_to_string sexp))
 
 let expect_success (solver : solver) (sexp : sexp) : unit =
   silent_command solver sexp
@@ -273,7 +275,8 @@ let assert_ (solver : solver) (term : term) : unit =
   expect_success solver (SList [SSymbol "assert"; term_to_sexp term])
 
 let assert_named  (solver : solver) (name : string) (term : term) : unit =
-  expect_success solver (SList [SSymbol "assert"; SList [SSymbol "!"; (term_to_sexp term)]; SSymbol ":named"; SSymbol name])
+  let cmd = SList [SSymbol "assert"; SList [SSymbol "!"; (term_to_sexp term); SSymbol ":named"; SSymbol name]] in
+  expect_success solver cmd
 
 let assert_soft (solver : solver) ?weight:(weight = 1) ?id:(id = "") (term : term) : unit =
   let id_suffix = match id with
