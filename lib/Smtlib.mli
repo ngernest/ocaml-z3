@@ -40,6 +40,8 @@ type term =
   | App of identifier * term list
   | Let of string * term * term
 
+type model = (identifier * term) list
+
 (** Tactics to configure z3's solver strategy. *)
 type tactic =
   | Simplify
@@ -99,7 +101,12 @@ val check_sat : solver -> check_sat_result
 val check_sat_using : tactic -> solver -> check_sat_result
 
 (** [get_model solver] runs the command [(get-model)] *)
-val get_model : solver -> (identifier * term) list
+val get_model : solver -> model
+
+(** [get_all_models solver] repeatedly runs [get_model solver] and
+    invalidates the resulting model in order to get another one,
+    until UNSAT or UNKNOWN is reached. *)
+val get_all_models : solver -> model Seq.t
 
 val get_unsat_core : solver -> string list
 

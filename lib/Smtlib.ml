@@ -63,6 +63,7 @@ let command (solver : solver) (sexp : sexp) =
   read solver
 
 let silent_command (solver : solver) (sexp : sexp) =
+  (* sexp_to_string sexp |> Printf.printf "%s\n%!"; *)
   write solver sexp
 
 (* keep track of all solvers we spawn, so we can close our read/write
@@ -166,6 +167,8 @@ type term =
   | ForAll of (identifier * sort) list * term
   | App of identifier * term list
   | Let of string * term * term
+
+type model = (identifier * term) list
 
 type tactic =
   | Simplify
@@ -338,7 +341,7 @@ let check_sat_using (tactic : tactic) (solver : solver) : check_sat_result =
   let cmd = (SList [SSymbol "check-sat-using"; tactic_to_sexp tactic]) in
   read_sat @@ command solver cmd
 
-let get_model (solver : solver) : (identifier * term) list =
+let get_model (solver : solver) : model =
   let rec read_model sexp = match sexp with
     | [] -> []
     | (SList [SSymbol "define-fun"; SSymbol x; SList []; _; sexp]) :: rest ->
@@ -355,7 +358,6 @@ let get_unsat_core (solver : solver) : string list =
   | SList lst -> List.map sexp_to_string lst
   | _ -> failwith "Unsat core was not list"
   
-
 let get_one_value (solver : solver) (e : term) : term =
   let res = command solver
       (SList [SSymbol "get-value"; SList [term_to_sexp e]]) in
@@ -381,7 +383,7 @@ let int_to_term n = Int n
 
 let const x = Const (Id x)
 
-let bool_to_term b = match b with
+let bool_to_term = function
   | true -> Const (Id "true")
   | false -> Const (Id "false")
 
@@ -463,3 +465,18 @@ let bvnot = app1 "bvnot"
 
 let concat = app2 "concat"
 let extract i j term = App(Id (Printf.sprintf "(_ extract %d %d)" i j), [term])
+
+let get_all_models (solver : solver) : model Seq.t =
+  (* ``All models are wrong, but some are useful.'' --George Box *)
+  let step () : (model*unit) option =
+    match check_sat solver with
+    | Unsat | Unknown -> None
+    | Sat ->
+        let model = get_model solver in
+
+        (* Assert that the last model is not valid *)
+        let big_or = List.fold_left (fun accum (id, term) -> 
+                        or_ accum (not_ (equals (Const id) term))) (bool_to_term false) model in
+        let () = assert_ solver big_or in
+        Some (model, ()) in
+  Seq.unfold step ()
