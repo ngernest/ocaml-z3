@@ -2,10 +2,11 @@
  (modules Smtlib_lexer))
 
 (menhir
- (modules Smtlib_parser))
+ (modules Smtlib_parser)
+ (flags --unused-tokens))
 
 (library
   (public_name z3)
   (name z3)
   (modules Smtlib Smtlib_syntax Smtlib_lexer Smtlib_parser)
-  (libraries core bignum))
+  (libraries core bignum unix))
