@@ -1,30 +1,13 @@
-ocaml-z3
-==============
+# ocaml-z3
 
 An OCaml interface to the Z3 SMT solver
 
-Local build steps
----------------------
+## Local build 
+- This repo compiles with OCaml 5.2.0 (I recommend creating a fresh Opam switch)
+- Run `opam install . --deps-only` to install all OCaml dependencies
+- Run `dune build` to compile
 
-This package depends on the ```dune``` build system being installed on your machine.
-
-From the project's root directory:
-  ```
-  dune build
-  ```
-
-
-Installation with OPAM
-----------------------
-
-- Install [Git](https://git-scm.com/downloads)
-
-  On Mac OS X, Git is included with [XCode](https://developer.apple.com/xcode/).
-
-- Install [OPAM](https://opam.ocaml.org/doc/Install.html)
-
-- From the command line, run:
-
-  ```
-  opam pin add z3 https://github.com/mdmoeller/ocaml-z3.git
-  ```
+## Installation with Opam
+```
+opam pin add z3 https://github.com/ngernest/ocaml-z3.git
+```
